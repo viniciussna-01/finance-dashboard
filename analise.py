@@ -168,7 +168,7 @@ elif menu == "📊 Análises Gráficas":
         fig.update_yaxes(title_text="Preço (R$)", row=1, col=1)
         fig.update_yaxes(title_text="Volume", row=2, col=1)
         fig.update_xaxes(title_text="Data", row=2, col=1)
-    st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
     st.header("Rentabilidade Acumulada 📈")
 
 
