@@ -178,7 +178,8 @@ elif menu == "📊 Análises Gráficas":
 
     ativos_selecionados = st.multiselect(
     "Selecione o(s) ativo(s) para comparar:",
-    options=tickers
+    options=tickers,
+    default=["VALE3.SA", "PETR4.SA"]
 )
 
     if ativos_selecionados:
