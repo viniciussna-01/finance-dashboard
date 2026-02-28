@@ -169,6 +169,7 @@ elif menu == "📊 Análises Gráficas":
         fig.update_yaxes(title_text="Volume", row=2, col=1)
         fig.update_xaxes(title_text="Data", row=2, col=1)
         st.plotly_chart(fig, use_container_width=True)
+
     st.header("Rentabilidade Acumulada 📈")
 
 
@@ -188,24 +189,33 @@ elif menu == "📊 Análises Gráficas":
         for ticker in ativos_selecionados:
             dados_ativo = load_acoes_data(ticker, start_date, end_date)
             if not dados_ativo.empty:
-                preco = dados_ativo["Close"]
-                retorno = (preco / preco.iloc[0] - 1) * 100
-                rentabilidade[ticker] = retorno  # ✅ acumula cada ticker
+                if "Close" in dados_ativo.columns:
+                    preco = dados_ativo["Close"].squeeze()
+                else:
+                 preco = dados_ativo.iloc[:, 0].squeeze()
+            
+                preco = preco.dropna()
+                if len(preco) > 0:
+                    retorno = (preco / preco.iloc[0] - 1) * 100
+                    rentabilidade[ticker] = retorno
 
-        # SELIC e IPCA ficam AQUI, fora do for mas dentro do if ativos_selecionados
-        if not selic.empty:
-            selic_diaria = selic["SELIC"] / 100 / 252
-            selic_acum = ((1 + selic_diaria).cumprod() - 1) * 100
-            selic_acum.index = pd.to_datetime(selic_acum.index)
-            rentabilidade["SELIC"] = selic_acum.reindex(rentabilidade.index, method="ffill")
+    # ✅ Garante que o índice é datetime ANTES do reindex
+    rentabilidade.index = pd.to_datetime(rentabilidade.index)
 
-        if not ipca.empty:
+    # SELIC e IPCA
+    if not selic.empty:
+                selic_diaria = selic["SELIC"] / 100 / 252
+                selic_acum = ((1 + selic_diaria).cumprod() - 1) * 100
+                selic_acum.index = pd.to_datetime(selic_acum.index)
+                rentabilidade["SELIC"] = selic_acum.reindex(rentabilidade.index, method="ffill")
+
+    if not ipca.empty:
             ipca_mensal = ipca["IPCA"] / 100
             ipca_acum = ((1 + ipca_mensal).cumprod() - 1) * 100
             ipca_acum.index = pd.to_datetime(ipca_acum.index)
             rentabilidade["IPCA"] = ipca_acum.reindex(rentabilidade.index, method="ffill")
 
-        if not rentabilidade.empty:
+    if not rentabilidade.empty:
             rentabilidade.index = pd.to_datetime(rentabilidade.index)
             rentabilidade = rentabilidade.reset_index()
             rentabilidade = rentabilidade.rename(columns={"index": "Data", "Date": "Data"})
