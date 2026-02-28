@@ -177,14 +177,14 @@ elif menu == "📊 Análises Gráficas":
 #COMPARAR OUTROS ATIVOS SELECIONADOS
 #-----------------------------------
 
-    ativos_selecionados = st.multiselect(
-    "Selecione o(s) ativo(s) para comparar:",
-    options=tickers,
-    default=["VALE3.SA", "PETR4.SA"]
-)
+      ativos_selecionados = st.multiselect(
+        "Selecione o(s) ativo(s) para comparar:",
+        options=tickers,
+        default=["VALE3.SA", "PETR4.SA"]
+    )
 
     if ativos_selecionados:
-        rentabilidade = pd.DataFrame()  # ✅ correto, inicializa uma vez
+        rentabilidade = pd.DataFrame()
 
         for ticker in ativos_selecionados:
             dados_ativo = load_acoes_data(ticker, start_date, end_date)
@@ -192,30 +192,27 @@ elif menu == "📊 Análises Gráficas":
                 if "Close" in dados_ativo.columns:
                     preco = dados_ativo["Close"].squeeze()
                 else:
-                 preco = dados_ativo.iloc[:, 0].squeeze()
-            
+                    preco = dados_ativo.iloc[:, 0].squeeze()
                 preco = preco.dropna()
                 if len(preco) > 0:
                     retorno = (preco / preco.iloc[0] - 1) * 100
                     rentabilidade[ticker] = retorno
 
-    # ✅ Garante que o índice é datetime ANTES do reindex
-    rentabilidade.index = pd.to_datetime(rentabilidade.index)
+        rentabilidade.index = pd.to_datetime(rentabilidade.index)
 
-    # SELIC e IPCA
-    if not selic.empty:
-                selic_diaria = selic["SELIC"] / 100 / 252
-                selic_acum = ((1 + selic_diaria).cumprod() - 1) * 100
-                selic_acum.index = pd.to_datetime(selic_acum.index)
-                rentabilidade["SELIC"] = selic_acum.reindex(rentabilidade.index, method="ffill")
+        if not selic.empty:
+            selic_diaria = selic["SELIC"] / 100 / 252
+            selic_acum = ((1 + selic_diaria).cumprod() - 1) * 100
+            selic_acum.index = pd.to_datetime(selic_acum.index)
+            rentabilidade["SELIC"] = selic_acum.reindex(rentabilidade.index, method="ffill")
 
-    if not ipca.empty:
+        if not ipca.empty:
             ipca_mensal = ipca["IPCA"] / 100
             ipca_acum = ((1 + ipca_mensal).cumprod() - 1) * 100
             ipca_acum.index = pd.to_datetime(ipca_acum.index)
             rentabilidade["IPCA"] = ipca_acum.reindex(rentabilidade.index, method="ffill")
 
-    if not rentabilidade.empty:
+        if not rentabilidade.empty:
             rentabilidade.index = pd.to_datetime(rentabilidade.index)
             rentabilidade = rentabilidade.reset_index()
             rentabilidade = rentabilidade.rename(columns={"index": "Data", "Date": "Data"})
@@ -223,7 +220,7 @@ elif menu == "📊 Análises Gráficas":
             fig_rent = px.line(
                 rentabilidade,
                 x="Data",
-                y=rentabilidade.columns[1:],  # todas as colunas exceto a data
+                y=rentabilidade.columns[1:],
                 title="Rentabilidade Acumulada (%)",
                 labels={"value": "Retorno (%)", "variable": "Ativo"},
                 color_discrete_map={
