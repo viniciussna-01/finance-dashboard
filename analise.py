@@ -320,6 +320,7 @@ elif menu == "🌳 Treemap de Ações":
         "6M":  today_tree - datetime.timedelta(days=180),
         "YTD": datetime.date(today_tree.year, 1, 1),
         "1A":  today_tree - datetime.timedelta(days=365),
+        "2A": today_tree - datetime.timedelta(days=730),
     }
 
     col_btns = st.columns(len(periodos))
