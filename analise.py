@@ -157,7 +157,7 @@ elif menu == "📊 Análises Gráficas":
         fig_macro.add_trace(go.Scatter(
             x=df_macro["Data"], y=df_macro["Juros Real (%)"],
             name="Juro Real", mode="lines",
-            line=dict(color="#212121", width=2.5)
+            line=dict(color="#FFFFFF", width=2.5)
         ))
 
         fig_macro.add_hline(y=0, line_dash="solid", line_color="red", opacity=0.6, line_width=1)
