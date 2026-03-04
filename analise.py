@@ -103,29 +103,27 @@ elif menu == "📊 Análises Gráficas":
 
     st.header("Análise Macro - Brasil 🇧🇷")
 
-    # --- Gráfico SELIC x IPCA x Juros Real (acumulado) ---
+    # --- Gráfico SELIC divulgada x IPCA acumulado x Juros Real ---
     if not selic.empty and not ipca.empty:
 
-        # SELIC acumulada (diária → acumulada)
-        selic_diaria = selic["SELIC"] / 100 / 252
-        selic_acum = ((1 + selic_diaria).cumprod() - 1) * 100
-        selic_acum.index = pd.to_datetime(selic_acum.index)
+        # SELIC: taxa % a.a. divulgada (série já vem em % a.a.)
+        selic_aa = selic["SELIC"].copy()
+        selic_aa.index = pd.to_datetime(selic_aa.index)
 
-        # IPCA acumulado (mensal → acumulado)
-        ipca_mensal = ipca["IPCA"] / 100
-        ipca_acum = ((1 + ipca_mensal).cumprod() - 1) * 100
-        ipca_acum.index = pd.to_datetime(ipca_acum.index)
+        # IPCA acumulado: soma simples das variações mensais no período
+        ipca_mensal = ipca["IPCA"].copy()
+        ipca_mensal.index = pd.to_datetime(ipca_mensal.index)
+        ipca_acum = ipca_mensal.cumsum()
 
-        # Alinha os índices
-        idx_comum = selic_acum.index
-        ipca_reindexado = ipca_acum.reindex(idx_comum, method="ffill")
+        # Alinha IPCA ao índice da SELIC (forward fill para dias sem divulgação)
+        ipca_reindexado = ipca_acum.reindex(selic_aa.index, method="ffill")
 
-        # Juros Real = SELIC acumulada - IPCA acumulado
-        juros_real = selic_acum - ipca_reindexado
+        # Juros Real = SELIC % a.a. − IPCA acumulado no período
+        juros_real = selic_aa - ipca_reindexado
 
         df_macro = pd.DataFrame({
-            "Data": idx_comum,
-            "SELIC Acumulada (%)": selic_acum.values,
+            "Data": selic_aa.index,
+            "SELIC % a.a.": selic_aa.values,
             "IPCA Acumulado (%)": ipca_reindexado.values,
             "Juros Real (%)": juros_real.values,
         })
@@ -133,13 +131,13 @@ elif menu == "📊 Análises Gráficas":
         fig_macro = go.Figure()
 
         fig_macro.add_trace(go.Scatter(
-            x=df_macro["Data"], y=df_macro["SELIC Acumulada (%)"],
-            name="SELIC Acumulada", mode="lines",
+            x=df_macro["Data"], y=df_macro["SELIC % a.a."],
+            name="SELIC (% a.a.)", mode="lines",
             line=dict(color="#AAFF00", width=2)
         ))
         fig_macro.add_trace(go.Scatter(
             x=df_macro["Data"], y=df_macro["IPCA Acumulado (%)"],
-            name="IPCA Acumulado", mode="lines",
+            name="IPCA Acumulado (%)", mode="lines",
             line=dict(color="#FF6B35", width=2)
         ))
         fig_macro.add_trace(go.Scatter(
@@ -151,9 +149,9 @@ elif menu == "📊 Análises Gráficas":
         fig_macro.add_hline(y=0, line_dash="dot", line_color="gray", opacity=0.5)
 
         fig_macro.update_layout(
-            title="SELIC × IPCA × Juros Real — Acumulado no Período (%)",
+            title="SELIC (% a.a.) × IPCA Acumulado × Juros Real no Período",
             xaxis_title="Data",
-            yaxis_title="Retorno Acumulado (%)",
+            yaxis_title="(%)",
             height=450,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             hovermode="x unified"
