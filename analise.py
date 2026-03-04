@@ -166,7 +166,7 @@ elif menu == "📊 Análises Gráficas":
             title="SELIC (% a.a.) × IPCA Acumulado × Juros Real no Período",
             xaxis_title=None,
             yaxis_title=None,
-            yaxis=dict(tickformat=".0f", ticksuffix="%", gridcolor="#e0e0e0"),
+            yaxis=dict(tickformat=".0f", ticksuffix="%", gridcolor="#e0e0e0",showgrid=False),
             xaxis=dict(gridcolor="#e0e0e0", showgrid=False),
             height=480,
             plot_bgcolor="rgba(0,0,0,0)",
