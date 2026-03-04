@@ -147,28 +147,40 @@ elif menu == "📊 Análises Gráficas":
         fig_macro.add_trace(go.Scatter(
             x=df_macro["Data"], y=df_macro["SELIC % a.a."],
             name="SELIC (% a.a.)", mode="lines",
-            line=dict(color="#AAFF00", width=2)
+            line=dict(color="#1565C0", width=2.5)
         ))
         fig_macro.add_trace(go.Scatter(
             x=df_macro["Data"], y=df_macro["IPCA Acumulado (%)"],
             name="IPCA Acumulado (%)", mode="lines",
-            line=dict(color="#FF6B35", width=2)
+            line=dict(color="#D32F2F", width=2.5)
         ))
         fig_macro.add_trace(go.Scatter(
             x=df_macro["Data"], y=df_macro["Juros Real (%)"],
-            name="Juros Real (SELIC − IPCA)", mode="lines",
-            line=dict(color="#5590D8", width=2, dash="dash")
+            name="Juro Real", mode="lines",
+            line=dict(color="#212121", width=2.5)
         ))
 
-        fig_macro.add_hline(y=0, line_dash="dot", line_color="gray", opacity=0.5)
+        fig_macro.add_hline(y=0, line_dash="solid", line_color="red", opacity=0.6, line_width=1)
 
         fig_macro.update_layout(
             title="SELIC (% a.a.) × IPCA Acumulado × Juros Real no Período",
-            xaxis_title="Data",
-            yaxis_title="(%)",
-            height=450,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            hovermode="x unified"
+            xaxis_title=None,
+            yaxis_title=None,
+            yaxis=dict(tickformat=".0f", ticksuffix="%", gridcolor="#e0e0e0"),
+            xaxis=dict(gridcolor="#e0e0e0", showgrid=True),
+            height=480,
+            plot_bgcolor="#FFF8F0",
+            paper_bgcolor="#FFF8F0",
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", y=1.02,
+                xanchor="center", x=0.5,
+                bgcolor="rgba(0,0,0,0)",
+                borderwidth=1,
+                bordercolor="#ccc"
+            ),
+            hovermode="x unified",
+            margin=dict(l=40, r=40, t=60, b=40)
         )
 
         st.plotly_chart(fig_macro, use_container_width=True)
