@@ -31,11 +31,23 @@ def load_currency_data(start_date, end_date):
 
 @st.cache_data(ttl=3600)
 def load_selic_data(start_date, end_date):
-    return sgs.get({'SELIC': 1178}, start=start_date, end=end_date)
+    try:
+        start_str = pd.Timestamp(start_date).strftime("%Y-%m-%d")
+        end_str = pd.Timestamp(end_date).strftime("%Y-%m-%d")
+        return sgs.get({'SELIC': 1178}, start=start_str, end=end_str)
+    except Exception as e:
+        st.warning(f"Erro ao carregar dados da SELIC: {e}")
+        return pd.DataFrame()
 
 @st.cache_data(ttl=3600)
 def load_ipca_data(start_date, end_date):
-    return sgs.get({'IPCA': 433}, start=start_date, end=end_date)
+    try:
+        start_str = pd.Timestamp(start_date).strftime("%Y-%m-%d")
+        end_str = pd.Timestamp(end_date).strftime("%Y-%m-%d")
+        return sgs.get({'IPCA': 433}, start=start_str, end=end_str)
+    except Exception as e:
+        st.warning(f"Erro ao carregar dados do IPCA: {e}")
+        return pd.DataFrame()
 
 @st.cache_data(ttl=3600)
 def load_acoes_data(ticker, start_date, end_date):
