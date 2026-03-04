@@ -167,7 +167,7 @@ elif menu == "📊 Análises Gráficas":
             xaxis_title=None,
             yaxis_title=None,
             yaxis=dict(tickformat=".0f", ticksuffix="%", gridcolor="#e0e0e0"),
-            xaxis=dict(gridcolor="#e0e0e0", showgrid=True),
+            xaxis=dict(gridcolor="#e0e0e0", showgrid=False),
             height=480,
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
