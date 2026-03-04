@@ -7,16 +7,16 @@ import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Configure page FIRST for better performance
 st.set_page_config(layout="wide", page_title="Dashboard Financeiro")
 
-# ------ codigo de cores do dashboard ----
+# cores que escolhi pro dashboard - paleta azul
 blue_palette = [
     "#071D3D", "#102E5E", "#1E4A8A", "#2E63A8", "#3E79C2",
     "#5590D8", "#6FA5E6", "#8AB8EE", "#A9C9F2", "#C5D7F5", "#D9D9D9"
 ]
 
 LISTA_MOEDAS = ['USD', 'EUR', 'GBP', 'CHF', 'CAD']
+
 tickers = [
     '^BVSP', 'VALE3.SA', 'PETR4.SA', 'PRIO3.SA', 'WEGE3.SA',
     "ABEV3.SA","ALOS3.SA","ASAI3.SA","AZUL4.SA","B3SA3.SA","BBAS3.SA","BBDC3.SA","BBDC4.SA","BBSE3.SA",
@@ -30,40 +30,32 @@ tickers = [
     "SOMA3.SA","SUZB3.SA","TAEE11.SA","TIMS3.SA","TOTS3.SA","UGPA3.SA","USIM5.SA","VBBR3.SA",
     "VIVT3.SA","YDUQ3.SA"
 ]
+
 today = datetime.datetime.now()
 fixed_year = 2024
-jan_1 = datetime.date(fixed_year, 1, 1)
-dec_31 = datetime.date(fixed_year, 12, 31)
 
 
-# ----- Cached data loaders --------
+# funções pra carregar os dados com cache
 @st.cache_data(ttl=3600)
 def load_currency_data(start_date, end_date):
     return currency.get(LISTA_MOEDAS, start=start_date, end=end_date)
 
 @st.cache_data(ttl=3600)
 def load_selic_data(start_date, end_date):
-    try:
-        start_str = pd.Timestamp(start_date).strftime("%Y-%m-%d")
-        end_str = pd.Timestamp(end_date).strftime("%Y-%m-%d")
-        return sgs.get({'SELIC': 1178}, start=start_str, end=end_str)
-    except Exception as e:
-        st.warning(f"Erro ao carregar dados da SELIC: {e}")
-        return pd.DataFrame()
+    # precisei converter pra string senão a API do bcb dava erro
+    s = pd.Timestamp(start_date).strftime("%Y-%m-%d")
+    e = pd.Timestamp(end_date).strftime("%Y-%m-%d")
+    return sgs.get({'SELIC': 1178}, start=s, end=e)
 
 @st.cache_data(ttl=3600)
 def load_ipca_data(start_date, end_date):
-    try:
-        start_str = pd.Timestamp(start_date).strftime("%Y-%m-%d")
-        end_str = pd.Timestamp(end_date).strftime("%Y-%m-%d")
-        return sgs.get({'IPCA': 433}, start=start_str, end=end_str)
-    except Exception as e:
-        st.warning(f"Erro ao carregar dados do IPCA: {e}")
-        return pd.DataFrame()
+    s = pd.Timestamp(start_date).strftime("%Y-%m-%d")
+    e = pd.Timestamp(end_date).strftime("%Y-%m-%d")
+    return sgs.get({'IPCA': 433}, start=s, end=e)
 
 @st.cache_data(ttl=3600)
 def load_acoes_data(ticker, start_date, end_date):
-    dados = yf.download(
+    df = yf.download(
         ticker,
         start=start_date,
         end=end_date,
@@ -71,12 +63,13 @@ def load_acoes_data(ticker, start_date, end_date):
         auto_adjust=True,
         group_by="column"
     )
-    if isinstance(dados.columns, pd.MultiIndex):
-        dados.columns = [col[0] for col in dados.columns]
-    return dados
+    # corrige multiindex que o yfinance as vezes retorna
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [col[0] for col in df.columns]
+    return df
 
 
-# ----- Sidebar -----
+# sidebar
 with st.sidebar:
     st.image(
         "data_atvd3/logo1.png",
@@ -91,17 +84,16 @@ with st.sidebar:
         (datetime.date(2024, 1, 1), datetime.date.today())
     )
 
-# Load data
+# carrega os dados principais
 moedas = load_currency_data(start_date, end_date)
-selic = load_selic_data(start_date, end_date)
-# Carrega IPCA com 12 meses extras antes do início para garantir a janela móvel
+selic  = load_selic_data(start_date, end_date)
+
+# ipca precisa de 12 meses antes pra janela movel funcionar
 ipca_start = (pd.Timestamp(start_date) - pd.DateOffset(months=12)).date()
 ipca = load_ipca_data(ipca_start, end_date)
 
 
-#--------------------------
-# PÁGINA INICIAL
-#--------------------------
+# INÍCIO
 if menu == "🏠 INÍCIO":
 
     st.title("📊 Dashboard de Indicadores Econômicos")
@@ -120,37 +112,31 @@ if menu == "🏠 INÍCIO":
     st.info("Utilize o menu lateral para acessar as análises gráficas.")
 
 
-#--------------------------
 # ANÁLISES GRÁFICAS
-#--------------------------
 elif menu == "📊 Análises Gráficas":
 
     st.title("📈 Análises Gráficas")
-
     st.header("Análise Macro - Brasil 🇧🇷")
 
-    # --- Gráfico SELIC divulgada x IPCA acumulado x Juros Real ---
     if not selic.empty and not ipca.empty:
 
-        # SELIC: taxa % a.a. divulgada (série já vem em % a.a.)
         selic_aa = selic["SELIC"].copy()
         selic_aa.index = pd.to_datetime(selic_aa.index)
 
-        # IPCA acumulado: soma dos últimos 12 meses (janela móvel)
-        ipca_mensal = ipca["IPCA"].copy()
-        ipca_mensal.index = pd.to_datetime(ipca_mensal.index)
-        ipca_acum = ipca_mensal.rolling(window=12, min_periods=12).sum()
+        # IPCA dos ultimos 12 meses (rolante)
+        temp = ipca["IPCA"].copy()
+        temp.index = pd.to_datetime(temp.index)
+        ipca_12m = temp.rolling(window=12, min_periods=12).sum()
 
-        # Alinha IPCA ao índice da SELIC (forward fill para dias sem divulgação)
-        ipca_reindexado = ipca_acum.reindex(selic_aa.index, method="ffill")
+        # alinha com o indice da selic
+        ipca_alinhado = ipca_12m.reindex(selic_aa.index, method="ffill")
 
-        # Juros Real = SELIC % a.a. − IPCA acumulado no período
-        juros_real = selic_aa - ipca_reindexado
+        juros_real = selic_aa - ipca_alinhado
 
         df_macro = pd.DataFrame({
             "Data": selic_aa.index,
             "SELIC % a.a.": selic_aa.values,
-            "IPCA Acumulado (%)": ipca_reindexado.values,
+            "IPCA Acumulado (%)": ipca_alinhado.values,
             "Juros Real (%)": juros_real.values,
         })
 
@@ -158,12 +144,12 @@ elif menu == "📊 Análises Gráficas":
 
         fig_macro.add_trace(go.Scatter(
             x=df_macro["Data"], y=df_macro["SELIC % a.a."],
-            name="SELIC (% a.a.)", mode="lines",
+            name="Taxa Selic", mode="lines",
             line=dict(color="#1565C0", width=2.5)
         ))
         fig_macro.add_trace(go.Scatter(
             x=df_macro["Data"], y=df_macro["IPCA Acumulado (%)"],
-            name="IPCA Acumulado (%)", mode="lines",
+            name="IPCA", mode="lines",
             line=dict(color="#D32F2F", width=2.5)
         ))
         fig_macro.add_trace(go.Scatter(
@@ -175,10 +161,10 @@ elif menu == "📊 Análises Gráficas":
         fig_macro.add_hline(y=0, line_dash="solid", line_color="red", opacity=0.6, line_width=1)
 
         fig_macro.update_layout(
-            title="SELIC (% a.a.) × IPCA Acumulado × Juros Real no Período",
+            title="SELIC (% a.a.) × IPCA Acumulado × Juros Real<br>no Período",
             xaxis_title=None,
             yaxis_title=None,
-            yaxis=dict(tickformat=".0f", ticksuffix="%", gridcolor="#e0e0e0",showgrid=False),
+            yaxis=dict(tickformat=".0f", ticksuffix="%", gridcolor="#e0e0e0", showgrid=False),
             xaxis=dict(gridcolor="#e0e0e0", showgrid=False),
             height=480,
             plot_bgcolor="rgba(0,0,0,0)",
@@ -205,34 +191,21 @@ elif menu == "📊 Análises Gráficas":
     if not dados.empty:
         dados_plot = dados.reset_index()
         fig = make_subplots(
-            rows=2,
-            cols=1,
+            rows=2, cols=1,
             shared_xaxes=True,
             vertical_spacing=0.05,
             row_heights=[0.7, 0.3]
         )
         fig.add_trace(
-            go.Scatter(
-                x=dados_plot["Date"],
-                y=dados_plot["Close"],
-                name="Preço (R$)",
-                mode="lines"
-            ),
+            go.Scatter(x=dados_plot["Date"], y=dados_plot["Close"],
+                       name="Preço (R$)", mode="lines"),
             row=1, col=1
         )
         fig.add_trace(
-            go.Bar(
-                x=dados_plot["Date"],
-                y=dados_plot["Volume"],
-                name="Volume"
-            ),
+            go.Bar(x=dados_plot["Date"], y=dados_plot["Volume"], name="Volume"),
             row=2, col=1
         )
-        fig.update_layout(
-            title=f"{ativo} - Preço e Volume",
-            height=700,
-            showlegend=True
-        )
+        fig.update_layout(title=f"{ativo} - Preço e Volume", height=700, showlegend=True)
         fig.update_yaxes(title_text="Preço (R$)", row=1, col=1)
         fig.update_yaxes(title_text="Volume", row=2, col=1)
         fig.update_xaxes(title_text="Data", row=2, col=1)
@@ -263,15 +236,16 @@ elif menu == "📊 Análises Gráficas":
 
         rentabilidade.index = pd.to_datetime(rentabilidade.index)
 
+        # adiciona selic e ipca como benchmark
         if not selic.empty:
-            selic_diaria = selic["SELIC"] / 100 / 252
-            selic_acum = ((1 + selic_diaria).cumprod() - 1) * 100
+            selic_d = selic["SELIC"] / 100 / 252
+            selic_acum = ((1 + selic_d).cumprod() - 1) * 100
             selic_acum.index = pd.to_datetime(selic_acum.index)
             rentabilidade["SELIC"] = selic_acum.reindex(rentabilidade.index, method="ffill")
 
         if not ipca.empty:
-            ipca_mensal = ipca["IPCA"] / 100
-            ipca_acum = ((1 + ipca_mensal).cumprod() - 1) * 100
+            ipca_m = ipca["IPCA"] / 100
+            ipca_acum = ((1 + ipca_m).cumprod() - 1) * 100
             ipca_acum.index = pd.to_datetime(ipca_acum.index)
             rentabilidade["IPCA"] = ipca_acum.reindex(rentabilidade.index, method="ffill")
 
@@ -303,14 +277,11 @@ elif menu == "📊 Análises Gráficas":
         st.warning("Selecione ao menos um ativo para visualizar.")
 
 
-#---------------------------
-# TREEMAP DE AÇÕES
-#---------------------------
+# TREEMAP
 elif menu == "🌳 Treemap de Ações":
 
     st.title("🌳 Treemap de Ações — Ibovespa")
 
-    # Lista completa das ações do Ibovespa
     IBOV_TICKERS = [
         "ABEV3","ALOS3","ASAI3","AZUL4","B3SA3","BBAS3","BBDC3","BBDC4","BBSE3",
         "BPAC11","BRAP4","BRFS3","BRKM5","CASH3","CCRO3","CIEL3","CMIG4","CMIN3",
@@ -324,7 +295,6 @@ elif menu == "🌳 Treemap de Ações":
         "VIVT3","WEGE3","YDUQ3"
     ]
 
-    # Seletor de período — botões rápidos
     today_tree = datetime.date.today()
     periodos = {
         "1M":  today_tree - datetime.timedelta(days=30),
@@ -332,14 +302,14 @@ elif menu == "🌳 Treemap de Ações":
         "6M":  today_tree - datetime.timedelta(days=180),
         "YTD": datetime.date(today_tree.year, 1, 1),
         "1A":  today_tree - datetime.timedelta(days=365),
-        "2A": today_tree - datetime.timedelta(days=730),
+        "2A":  today_tree - datetime.timedelta(days=730),
     }
 
-    col_btns = st.columns(len(periodos))
+    cols = st.columns(len(periodos))
     periodo_selecionado = st.session_state.get("periodo_treemap", "YTD")
 
     for i, (label, _) in enumerate(periodos.items()):
-        if col_btns[i].button(label, key=f"btn_{label}", use_container_width=True):
+        if cols[i].button(label, key=f"btn_{label}", use_container_width=True):
             periodo_selecionado = label
             st.session_state["periodo_treemap"] = label
 
@@ -348,45 +318,40 @@ elif menu == "🌳 Treemap de Ações":
 
     st.caption(f"Período: {tree_start.strftime('%d/%m/%Y')} → {tree_end.strftime('%d/%m/%Y')}")
 
-    # Carrega dados e calcula retorno
     with st.spinner("Carregando dados do Ibovespa..."):
-        dados_treemap = []
+        lista_retornos = []
         tickers_sa = [t + ".SA" for t in IBOV_TICKERS]
 
-        try:
-            # Baixa todos de uma vez para ser mais rápido
-            raw = yf.download(
-                tickers_sa,
-                start=tree_start,
-                end=tree_end,
-                progress=False,
-                auto_adjust=True,
-                group_by="ticker"
-            )
+        # baixa tudo de uma vez, mais rapido que um por um
+        raw = yf.download(
+            tickers_sa,
+            start=tree_start,
+            end=tree_end,
+            progress=False,
+            auto_adjust=True,
+            group_by="ticker"
+        )
 
-            for ticker in IBOV_TICKERS:
-                ticker_sa = ticker + ".SA"
-                try:
-                    if isinstance(raw.columns, pd.MultiIndex):
-                        close = raw[ticker_sa]["Close"].dropna()
-                    else:
-                        close = raw["Close"].dropna()
+        for ticker in IBOV_TICKERS:
+            ticker_sa = ticker + ".SA"
+            try:
+                if isinstance(raw.columns, pd.MultiIndex):
+                    close = raw[ticker_sa]["Close"].dropna()
+                else:
+                    close = raw["Close"].dropna()
 
-                    if len(close) >= 2:
-                        retorno = round((close.iloc[-1] / close.iloc[0] - 1) * 100, 2)
-                        dados_treemap.append({
-                            "Ativo": ticker,
-                            "Retorno (%)": retorno,
-                            "Tamanho": abs(retorno) if retorno != 0 else 0.1
-                        })
-                except Exception:
-                    continue
+                if len(close) >= 2:
+                    ret = round((close.iloc[-1] / close.iloc[0] - 1) * 100, 2)
+                    lista_retornos.append({
+                        "Ativo": ticker,
+                        "Retorno (%)": ret,
+                        "Tamanho": abs(ret) if ret != 0 else 0.1
+                    })
+            except Exception:
+                continue
 
-        except Exception as e:
-            st.error(f"Erro ao carregar dados: {e}")
-
-    if dados_treemap:
-        df_treemap = pd.DataFrame(dados_treemap)
+    if lista_retornos:
+        df_treemap = pd.DataFrame(lista_retornos)
 
         fig_tree = px.treemap(
             df_treemap,
@@ -418,9 +383,7 @@ elif menu == "🌳 Treemap de Ações":
         st.warning("Não foi possível carregar os dados. Tente novamente.")
 
 
-#---------------------------
-# PÁGINA FINAL
-#---------------------------
+# FIM
 elif menu == "📌 FIM":
 
     st.title("Encerramento")
