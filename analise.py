@@ -102,17 +102,64 @@ elif menu == "📊 Análises Gráficas":
     st.title("📈 Análises Gráficas")
 
     st.header("Análise Macro - Brasil 🇧🇷")
-    col1, col2 = st.columns(2)
 
-    with col1:
-        if not selic.empty:
-            fig_selic = px.line(selic, y='SELIC', title='Taxa de Juros (SELIC)')
-            st.plotly_chart(fig_selic, use_container_width=True)
+    # --- Gráfico SELIC x IPCA x Juros Real (acumulado) ---
+    if not selic.empty and not ipca.empty:
 
-    with col2:
-        if not ipca.empty:
-            fig_ipca = px.line(ipca, y='IPCA', title='Variação Mensal do IPCA')
-            st.plotly_chart(fig_ipca, use_container_width=True)
+        # SELIC acumulada (diária → acumulada)
+        selic_diaria = selic["SELIC"] / 100 / 252
+        selic_acum = ((1 + selic_diaria).cumprod() - 1) * 100
+        selic_acum.index = pd.to_datetime(selic_acum.index)
+
+        # IPCA acumulado (mensal → acumulado)
+        ipca_mensal = ipca["IPCA"] / 100
+        ipca_acum = ((1 + ipca_mensal).cumprod() - 1) * 100
+        ipca_acum.index = pd.to_datetime(ipca_acum.index)
+
+        # Alinha os índices
+        idx_comum = selic_acum.index
+        ipca_reindexado = ipca_acum.reindex(idx_comum, method="ffill")
+
+        # Juros Real = SELIC acumulada - IPCA acumulado
+        juros_real = selic_acum - ipca_reindexado
+
+        df_macro = pd.DataFrame({
+            "Data": idx_comum,
+            "SELIC Acumulada (%)": selic_acum.values,
+            "IPCA Acumulado (%)": ipca_reindexado.values,
+            "Juros Real (%)": juros_real.values,
+        })
+
+        fig_macro = go.Figure()
+
+        fig_macro.add_trace(go.Scatter(
+            x=df_macro["Data"], y=df_macro["SELIC Acumulada (%)"],
+            name="SELIC Acumulada", mode="lines",
+            line=dict(color="#AAFF00", width=2)
+        ))
+        fig_macro.add_trace(go.Scatter(
+            x=df_macro["Data"], y=df_macro["IPCA Acumulado (%)"],
+            name="IPCA Acumulado", mode="lines",
+            line=dict(color="#FF6B35", width=2)
+        ))
+        fig_macro.add_trace(go.Scatter(
+            x=df_macro["Data"], y=df_macro["Juros Real (%)"],
+            name="Juros Real (SELIC − IPCA)", mode="lines",
+            line=dict(color="#5590D8", width=2, dash="dash")
+        ))
+
+        fig_macro.add_hline(y=0, line_dash="dot", line_color="gray", opacity=0.5)
+
+        fig_macro.update_layout(
+            title="SELIC × IPCA × Juros Real — Acumulado no Período (%)",
+            xaxis_title="Data",
+            yaxis_title="Retorno Acumulado (%)",
+            height=450,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            hovermode="x unified"
+        )
+
+        st.plotly_chart(fig_macro, use_container_width=True)
 
     st.header("Análise de Ações - Brasil 🇧🇷")
 
