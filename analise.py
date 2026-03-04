@@ -413,7 +413,7 @@ elif menu == "📌 FIM":
 
     st.title("Encerramento")
 
-    st.success("Projeto desenvolvido para disciplina de Visualização de Dados.")
+    st.success("Projeto desenvolvido para disciplina de Análise e Visualização de Dados.")
 
     st.write("Aluno: Vinícius Magalhães de Souza Sena")
     st.write("Ano: 2025")
