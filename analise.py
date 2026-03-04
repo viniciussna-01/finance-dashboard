@@ -169,8 +169,8 @@ elif menu == "📊 Análises Gráficas":
             yaxis=dict(tickformat=".0f", ticksuffix="%", gridcolor="#e0e0e0"),
             xaxis=dict(gridcolor="#e0e0e0", showgrid=True),
             height=480,
-            plot_bgcolor="#FFF8F0",
-            paper_bgcolor="#FFF8F0",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
             legend=dict(
                 orientation="h",
                 yanchor="bottom", y=1.02,
