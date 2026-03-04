@@ -296,70 +296,113 @@ elif menu == "📊 Análises Gráficas":
 #---------------------------
 elif menu == "🌳 Treemap de Ações":
 
-    st.title("🌳 Treemap de Ações")
+    st.title("🌳 Treemap de Ações — Ibovespa")
 
-    ativos_treemap = st.multiselect(
-        "Selecione as ações para o Treemap:",
-        options=tickers,
-        default=tickers
-    )
+    # Lista completa das ações do Ibovespa
+    IBOV_TICKERS = [
+        "ABEV3","ALOS3","ASAI3","AZUL4","B3SA3","BBAS3","BBDC3","BBDC4","BBSE3",
+        "BPAC11","BRAP4","BRFS3","BRKM5","CASH3","CCRO3","CIEL3","CMIG4","CMIN3",
+        "COGN3","CPFE3","CPLE6","CRFB3","CSAN3","CSMG3","CSNA3","CVCB3","CYRE3",
+        "DXCO3","ECOR3","EGIE3","ELET3","ELET6","EMBR3","ENEV3","ENGI11","EQTL3",
+        "EZTC3","FLRY3","GGBR4","GOAU4","GOLL4","HAPV3","HYPE3","IGTI11","IRBR3",
+        "ITSA4","ITUB4","JBSS3","KLBN11","LREN3","LWSA3","MGLU3","MRFG3","MRVE3",
+        "MULT3","NTCO3","PCAR3","PETR3","PETR4","PETZ3","PRIO3","QUAL3","RADL3",
+        "RAIL3","RAIZ4","RDOR3","RENT3","RRRP3","SANB11","SBSP3","SLCE3","SMTO3",
+        "SOMA3","SUZB3","TAEE11","TIMS3","TOTS3","UGPA3","USIM5","VALE3","VBBR3",
+        "VIVT3","WEGE3","YDUQ3"
+    ]
 
-    ticker_custom = st.text_input(
-        "Ou adicione um ticker manualmente (ex: ITUB4.SA, BBDC4.SA):",
-        placeholder="Digite e pressione Enter"
-    )
+    # Seletor de período — botões rápidos
+    today_tree = datetime.date.today()
+    periodos = {
+        "1M":  today_tree - datetime.timedelta(days=30),
+        "3M":  today_tree - datetime.timedelta(days=90),
+        "6M":  today_tree - datetime.timedelta(days=180),
+        "YTD": datetime.date(today_tree.year, 1, 1),
+        "1A":  today_tree - datetime.timedelta(days=365),
+    }
 
-    if ticker_custom:
-        extras = [t.strip().upper() for t in ticker_custom.split(",")]
-        ativos_treemap = list(set(ativos_treemap + extras))
+    col_btns = st.columns(len(periodos))
+    periodo_selecionado = st.session_state.get("periodo_treemap", "YTD")
 
-    if ativos_treemap:
+    for i, (label, _) in enumerate(periodos.items()):
+        if col_btns[i].button(label, key=f"btn_{label}", use_container_width=True):
+            periodo_selecionado = label
+            st.session_state["periodo_treemap"] = label
+
+    tree_start = periodos[periodo_selecionado]
+    tree_end   = today_tree
+
+    st.caption(f"Período: {tree_start.strftime('%d/%m/%Y')} → {tree_end.strftime('%d/%m/%Y')}")
+
+    # Carrega dados e calcula retorno
+    with st.spinner("Carregando dados do Ibovespa..."):
         dados_treemap = []
+        tickers_sa = [t + ".SA" for t in IBOV_TICKERS]
 
-        for ticker in ativos_treemap:
-            dados_ativo = load_acoes_data(ticker, start_date, end_date)
-            if not dados_ativo.empty:
-                preco_inicio = dados_ativo["Close"].iloc[0]
-                preco_fim = dados_ativo["Close"].iloc[-1]
-                retorno = round((preco_fim / preco_inicio - 1) * 100, 2)
-                dados_treemap.append({
-                    "Ativo": ticker.replace(".SA", ""),
-                    "Retorno (%)": retorno,
-                    "Tamanho": abs(retorno) if retorno != 0 else 0.1
-                })
-
-        if dados_treemap:
-            df_treemap = pd.DataFrame(dados_treemap)
-
-            fig_tree = px.treemap(
-                df_treemap,
-                path=["Ativo"],
-                values="Tamanho",
-                color="Retorno (%)",
-                color_continuous_scale=[
-                    [0.0, "#8B0000"],
-                    [0.5, "#1a1a1a"],
-                    [1.0, "#AAFF00"],
-                ],
-                color_continuous_midpoint=0,
-                custom_data=["Retorno (%)"]
+        try:
+            # Baixa todos de uma vez para ser mais rápido
+            raw = yf.download(
+                tickers_sa,
+                start=tree_start,
+                end=tree_end,
+                progress=False,
+                auto_adjust=True,
+                group_by="ticker"
             )
 
-            fig_tree.update_traces(
-                texttemplate="<b>%{label}</b><br>%{customdata[0]:.2f}%",
-                textfont=dict(size=16)
-            )
+            for ticker in IBOV_TICKERS:
+                ticker_sa = ticker + ".SA"
+                try:
+                    if isinstance(raw.columns, pd.MultiIndex):
+                        close = raw[ticker_sa]["Close"].dropna()
+                    else:
+                        close = raw["Close"].dropna()
 
-            fig_tree.update_layout(
-                title="Performance dos Ativos no Período (%)",
-                height=600,
-                coloraxis_colorbar=dict(title="Retorno (%)"),
-            )
+                    if len(close) >= 2:
+                        retorno = round((close.iloc[-1] / close.iloc[0] - 1) * 100, 2)
+                        dados_treemap.append({
+                            "Ativo": ticker,
+                            "Retorno (%)": retorno,
+                            "Tamanho": abs(retorno) if retorno != 0 else 0.1
+                        })
+                except Exception:
+                    continue
 
-            st.plotly_chart(fig_tree, use_container_width=True)
+        except Exception as e:
+            st.error(f"Erro ao carregar dados: {e}")
 
+    if dados_treemap:
+        df_treemap = pd.DataFrame(dados_treemap)
+
+        fig_tree = px.treemap(
+            df_treemap,
+            path=["Ativo"],
+            values="Tamanho",
+            color="Retorno (%)",
+            color_continuous_scale=[
+                [0.0, "#8B0000"],
+                [0.5, "#1a1a1a"],
+                [1.0, "#AAFF00"],
+            ],
+            color_continuous_midpoint=0,
+            custom_data=["Retorno (%)"]
+        )
+
+        fig_tree.update_traces(
+            texttemplate="<b>%{label}</b><br>%{customdata[0]:.2f}%",
+            textfont=dict(size=14)
+        )
+
+        fig_tree.update_layout(
+            title=f"Performance Ibovespa — {periodo_selecionado} (%)",
+            height=650,
+            coloraxis_colorbar=dict(title="Retorno (%)"),
+        )
+
+        st.plotly_chart(fig_tree, use_container_width=True)
     else:
-        st.warning("Selecione ou digite ao menos um ativo.")
+        st.warning("Não foi possível carregar os dados. Tente novamente.")
 
 
 #---------------------------
