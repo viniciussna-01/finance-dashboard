@@ -70,7 +70,9 @@ with st.sidebar:
 # Load data
 moedas = load_currency_data(start_date, end_date)
 selic = load_selic_data(start_date, end_date)
-ipca = load_ipca_data(start_date, end_date)
+# Carrega IPCA com 12 meses extras antes do início para garantir a janela móvel
+ipca_start = (pd.Timestamp(start_date) - pd.DateOffset(months=12)).date()
+ipca = load_ipca_data(ipca_start, end_date)
 
 
 #--------------------------
@@ -110,10 +112,10 @@ elif menu == "📊 Análises Gráficas":
         selic_aa = selic["SELIC"].copy()
         selic_aa.index = pd.to_datetime(selic_aa.index)
 
-        # IPCA acumulado: soma simples das variações mensais no período
+        # IPCA acumulado: soma dos últimos 12 meses (janela móvel)
         ipca_mensal = ipca["IPCA"].copy()
         ipca_mensal.index = pd.to_datetime(ipca_mensal.index)
-        ipca_acum = ipca_mensal.cumsum()
+        ipca_acum = ipca_mensal.rolling(window=12, min_periods=12).sum()
 
         # Alinha IPCA ao índice da SELIC (forward fill para dias sem divulgação)
         ipca_reindexado = ipca_acum.reindex(selic_aa.index, method="ffill")
