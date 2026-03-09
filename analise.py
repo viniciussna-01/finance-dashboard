@@ -77,7 +77,7 @@ with st.sidebar:
         use_container_width=True
     )
     st.markdown("---")
-    menu = st.radio("Navegação", ["🏠 INÍCIO", "📊 Análises Gráficas", "🌳 Treemap de Ações", "📌 FIM"])
+    menu = st.radio("Navegação", ["INÍCIO", "Análises Gráficas", "Treemap de Ações", "FIM"])
     st.markdown("---")
     start_date, end_date = st.date_input(
         "Selecione o intervalo da análise:",
@@ -94,9 +94,9 @@ ipca = load_ipca_data(ipca_start, end_date)
 
 
 # INÍCIO
-if menu == "🏠 INÍCIO":
+if menu == "INÍCIO":
 
-    st.title("📊 Dashboard de Indicadores Econômicos")
+    st.title("Dashboard de Indicadores Econômicos")
 
     st.markdown("""
     Este dashboard apresenta análises gráficas de indicadores econômicos brasileiros,
@@ -113,9 +113,9 @@ if menu == "🏠 INÍCIO":
 
 
 # ANÁLISES GRÁFICAS
-elif menu == "📊 Análises Gráficas":
+elif menu == "Análises Gráficas":
 
-    st.title("📈 Análises Gráficas")
+    st.title("Análises Gráficas")
     st.header("Análise Macro - Brasil 🇧🇷")
 
     if not selic.empty and not ipca.empty:
@@ -211,7 +211,7 @@ elif menu == "📊 Análises Gráficas":
         fig.update_xaxes(title_text="Data", row=2, col=1)
         st.plotly_chart(fig, use_container_width=True)
 
-    st.header("Rentabilidade Acumulada 📈")
+    st.header("Rentabilidade Acumulada")
 
     ativos_selecionados = st.multiselect(
         "Selecione o(s) ativo(s) para comparar:",
@@ -278,9 +278,9 @@ elif menu == "📊 Análises Gráficas":
 
 
 # TREEMAP
-elif menu == "🌳 Treemap de Ações":
+elif menu == "Treemap de Ações":
 
-    st.title("🌳 Treemap de Ações — Ibovespa")
+    st.title("Treemap de Ações — Ibovespa")
 
     IBOV_TICKERS = [
         "ABEV3","ALOS3","ASAI3","AZUL4","B3SA3","BBAS3","BBDC3","BBDC4","BBSE3",
@@ -384,7 +384,7 @@ elif menu == "🌳 Treemap de Ações":
 
 
 # FIM
-elif menu == "📌 FIM":
+elif menu == "FIM":
 
     st.title("Encerramento")
 
